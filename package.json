@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "@types/ws": "^8.5.4"
+  },
+  "dependencies": {
+    "line-intersect": "^3.0.0",
+    "vecti": "^2.1.39",
+    "ws": "^8.12.0"
+  }
+}
