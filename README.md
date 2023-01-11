@@ -15,7 +15,7 @@ npm install ts-node
 # Running
 ## Server
 ```sh
-ts-node ./src/server/server.ts
+npx ts-node src/server/server.ts
 ```
 
 ## Client

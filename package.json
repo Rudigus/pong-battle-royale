@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "line-intersect": "^3.0.0",
+    "ts-node": "^10.9.1",
     "vecti": "^2.1.39",
     "ws": "^8.12.0"
   }
