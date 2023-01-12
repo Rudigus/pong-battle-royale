@@ -118,9 +118,17 @@
             });
         };
     </script>
+    <link rel="stylesheet" type="text/css" href="default.css">
 </head>
 
 <body>
+    <div id="username-prompt-container">
+        <div id="username-prompt">
+            <label id="game-title-label">Pong Battle Royale</label>
+            <input class="text-input" type="text" placeholder="Username">
+            <input class="button" type="button" value="Play">
+        </div>
+    </div>
     <canvas id="myCanvas" width="800" height="800">
         <script>
             canvas = document.getElementById("myCanvas");
