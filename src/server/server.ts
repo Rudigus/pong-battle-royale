@@ -6,7 +6,9 @@ import Ball from "./game/ball";
 import { Line } from "./utils/line";
 import GameLoop from "./utils/gameLoop";
 import { clamp, reflectVector } from "./utils/Math";
+import { MessageType, SocketMessage } from "./data/socket";
 import { PlayerData, SessionData } from "./data/session";
+import { LeaderboardData } from "./data/leaderboard";
 import { randomUUID } from "crypto";
 
 const server = new Server({ port: 2222 });
@@ -77,10 +79,13 @@ function addPlayer(socket: WebSocket) {
         maxAngle: 0, // Initialized in reloadPlayersPositions
         lastAngle: 0 // Initialized in reloadPlayersPositions
     }
+    
+    const message: SocketMessage = {
+        type: MessageType.PlayerID,
+        payload: id
+    }
 
-    socket.send(JSON.stringify({
-        id: id
-    }));
+    socket.send(JSON.stringify(message));
 
     players.push(newPlayer);
 
@@ -226,6 +231,11 @@ function loop() {
         playersDistanceFromCenter: playersDistanceFromCenter
     }
 
-    const response = (JSON.stringify(game_data));
+    const message: SocketMessage = {
+        type: MessageType.Session,
+        payload: game_data
+    }
+
+    const response = (JSON.stringify(message));
     players.forEach((item) => { item.socket.send(response); })
 }

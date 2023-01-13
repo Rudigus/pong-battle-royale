@@ -1,7 +1,13 @@
-const usernamePromptContainer = document.getElementById("username-prompt-container")
-const playButton = document.getElementById("play-button")
-const canvas = document.getElementById("myCanvas")
-const context = canvas.getContext("2d")
+const usernamePromptContainer = document.getElementById("username-prompt-container");
+const playButton = document.getElementById("play-button");
+const canvas = document.getElementById("myCanvas");
+const context = canvas.getContext("2d");
+
+const messageType = Object.freeze({
+    SESSION: 0,
+    LEADERBOARD: 1,
+    PLAYER_ID: 2,
+});
 
 let playerId = null;
 
@@ -78,19 +84,9 @@ function setupClientUpdate(webSocket) {
             y: (y * yScale),
         }
     }
-    webSocket.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        
+    function handleSessionMessage(data) {
         let worldAngleOffsetToCenterPlayer = 0;
-
-        // Get player id from server
-        if(playerId == null) {
-            if(data.id) {
-                playerId = data.id;
-            }
-
-            return;
-        }
+        
         context.clearRect(-canvas.width, -canvas.height, canvas.width * 1.5, canvas.height * 1.5);
 
         context.strokeStyle = "black";
@@ -123,5 +119,18 @@ function setupClientUpdate(webSocket) {
             context.lineTo(b.x, b.y);
             context.stroke();
         });
+    }
+    webSocket.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+        switch (message.type) {
+            case messageType.SESSION:
+                handleSessionMessage(message.payload);
+                break;
+            case messageType.PLAYER_ID:
+                playerId = message.payload;
+                break;
+            default:
+                return;
+        }
     };
 }
