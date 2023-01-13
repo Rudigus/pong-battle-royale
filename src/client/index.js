@@ -107,8 +107,8 @@ function setupClientUpdate(webSocket) {
         const ballPos = getPointInWorld(data.ball.position.x, data.ball.position.y);
         context.beginPath();
         context.arc(ballPos.x, ballPos.y, 5, 0, (2 * Math.PI));
-        context.stroke();
-        context.closePath();
+        context.fillStyle = "#FFFFFF";
+        context.fill();
 
         const distanceFromCenter = data.playersDistanceFromCenter;
         context.lineWidth = 5;
