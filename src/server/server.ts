@@ -6,16 +6,28 @@ import Ball from "./game/ball";
 import { Line } from "./utils/line";
 import GameLoop from "./utils/gameLoop";
 import { clamp, reflectVector } from "./utils/Math";
-import { MessageType, SocketMessage } from "./data/socket";
+import { ServerMessageType, ServerSocketMessage, ClientMessageType, ClientSocketMessage } from "./data/socket";
 import { PlayerData, SessionData } from "./data/session";
 import { LeaderboardData } from "./data/leaderboard";
-import { randomUUID } from "crypto";
+// import { randomUUID } from "crypto";
 
 const server = new Server({ port: 2222 });
 
 const playersDistanceFromCenter = 5;
 let ball = new Ball();
 let players: Player[] = [];
+let leaderboard: LeaderboardData = {
+    leaders: []
+};
+let availableID = 0;
+
+function generateSocketMessage(payload: any, type: ServerMessageType) {
+    const message: ServerSocketMessage = {
+        type: type,
+        payload: payload
+    };
+    return JSON.stringify(message);
+}
 
 GameLoop.init();
 GameLoop.setLoopAction(loop.bind(this));
@@ -34,7 +46,21 @@ server.on('connection', function(socket) {
         //console.log(player);
         if(!player) { return; }
 
-        player.action = data.toString();
+        const message = JSON.parse(data.toString()) as ClientSocketMessage;
+        switch (message.type) {
+            case ClientMessageType.Action:
+                player.action = message.payload;
+                break;
+            case ClientMessageType.Username:
+                leaderboard.leaders.push({
+                    playerID: player.id,
+                    name: message.payload,
+                    score: 0
+                });
+                const replyMessage = generateSocketMessage(leaderboard, ServerMessageType.Leaderboard);
+                players.forEach((player) => { player.socket.send(replyMessage); });
+                break;
+        }
     });
 
     socket.on('error', (err) => {
@@ -56,18 +82,39 @@ server.on('connection', function(socket) {
     socket.on('close', () => {
         console.log('[Player] [Close] Connection with the client closed');
 
+        const removedPlayer = players.find((item) => {
+            return item.socket === socket;
+        });
+
         players = players.filter((item) => {
             return item.socket !== socket;
         })
     
         console.log("PLAYERS " + players.length);
+        
+        if (removedPlayer != null) {
+            leaderboard.leaders = leaderboard.leaders.filter((leader) => {
+                return leader.playerID !== removedPlayer.id;
+            })
+            const replyMessage = generateSocketMessage(leaderboard, ServerMessageType.Leaderboard);
+            players.forEach((player) => { player.socket.send(replyMessage); });
+        } else {
+            console.warn("Player not found");
+        }
 
         reloadPlayersPositions();
     })
 });
 
 function addPlayer(socket: WebSocket) {
-    const id = randomUUID();
+    function generateID(): number {
+        const id = availableID;
+        availableID++;
+        return id;
+    }
+
+    const id = generateID();
+    // const id = randomUUID();
 
     const newPlayer: Player = {
         id: id,
@@ -80,12 +127,9 @@ function addPlayer(socket: WebSocket) {
         lastAngle: 0 // Initialized in reloadPlayersPositions
     }
     
-    const message: SocketMessage = {
-        type: MessageType.PlayerID,
-        payload: id
-    }
+    const message = generateSocketMessage(id, ServerMessageType.PlayerID);
 
-    socket.send(JSON.stringify(message));
+    socket.send(message);
 
     players.push(newPlayer);
 
@@ -231,11 +275,7 @@ function loop() {
         playersDistanceFromCenter: playersDistanceFromCenter
     }
 
-    const message: SocketMessage = {
-        type: MessageType.Session,
-        payload: game_data
-    }
+    const response = generateSocketMessage(game_data, ServerMessageType.Session);
 
-    const response = (JSON.stringify(message));
-    players.forEach((item) => { item.socket.send(response); })
+    players.forEach((item) => { item.socket.send(response); });
 }

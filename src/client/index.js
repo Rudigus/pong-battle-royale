@@ -1,20 +1,43 @@
 const usernamePromptContainer = document.getElementById("username-prompt-container");
+const usernameInput = document.getElementById("username-input");
 const playButton = document.getElementById("play-button");
 const canvas = document.getElementById("myCanvas");
 const context = canvas.getContext("2d");
+const matchLeaderboard = document.getElementById("match-leaderboard");
+const leadersContainer = document.getElementById("leaders-container");
 
-const messageType = Object.freeze({
+const serverMessageType = Object.freeze({
     SESSION: 0,
     LEADERBOARD: 1,
     PLAYER_ID: 2,
 });
 
+const clientMessageType = Object.freeze({
+    ACTION: 0,
+    USERNAME: 1,
+});
+
 let playerId = null;
+
+let webSocket = null;
+
+function sendSocketMessage(payload, type) {
+    const message = {
+        type: type,
+        payload: payload
+    };
+    if (webSocket.readyState === WebSocket.OPEN) {
+        webSocket.send(JSON.stringify(message));
+    } else {
+        console.warn("webSocket is not connected");
+    }
+}
 
 playButton?.addEventListener("click", startGame);
 
 function startGame() {
     setupClient();
+    setupSocket();
     usernamePromptContainer.remove();
 }
 
@@ -26,8 +49,8 @@ function setupClient() {
 
     let touch = null;
 
-    const webSocket = new WebSocket('ws://localhost:2222/');
-    //const webSocket = new WebSocket('ws://0.tcp.sa.ngrok.io:14920');
+    webSocket = new WebSocket('ws://localhost:2222/');
+    //webSocket = new WebSocket('ws://0.tcp.sa.ngrok.io:14920');
 
     document.addEventListener('touchstart', (ev) => {
         touch = null;
@@ -49,28 +72,25 @@ function setupClient() {
         if(!touch) { return; }
 
         if(touch.clientX < canvas.width / 2) {
-            webSocket.send('move_left');
+            sendSocketMessage('move_left', clientMessageType.ACTION);
         } else {
-            webSocket.send('move_right');
+            sendSocketMessage('move_right', clientMessageType.ACTION);
         }
     }, 1000/30);
 
     document.addEventListener('keydown', (ev) => {
         switch(ev.keyCode) {
             case KEY.LEFT:
-                webSocket.send('move_left');
-            break;
-
+                sendSocketMessage('move_left', clientMessageType.ACTION);
+                break;
             case KEY.RIGHT: 
-                webSocket.send('move_right');
-            break;
+                sendSocketMessage('move_right', clientMessageType.ACTION);
+                break;
         }
     })
-
-    setupClientUpdate(webSocket);
 }
 
-function setupClientUpdate(webSocket) {
+function setupSocket() {
     function getPointInWorld(x, y) {
         y = -y; // Canvas y-axis is inverted
 
@@ -120,17 +140,47 @@ function setupClientUpdate(webSocket) {
             context.stroke();
         });
     }
+    function addLeaderEntry(leader) {
+        const leaderEntry = document.createElement("div");
+
+        const leaderName = document.createElement("label");
+        leaderName.innerText = leader.name;
+        leaderName.style.color = "white";
+
+        const leaderScore = document.createElement("label");
+        leaderScore.innerText = leader.score;
+        leaderScore.style.color = "white";
+        leaderScore.style.position = "absolute";
+        leaderScore.style.right = "15%";
+
+        leaderEntry.appendChild(leaderName);
+        leaderEntry.appendChild(leaderScore);
+        leadersContainer.appendChild(leaderEntry);
+    }
+    function handleLeaderboardMessage(data) {
+        if (window.getComputedStyle(matchLeaderboard, null).getPropertyValue("display") == "none") {
+            matchLeaderboard.style.display = "block";
+        }
+        leadersContainer.replaceChildren();
+        data.leaders.forEach(leader => addLeaderEntry(leader));
+    }
     webSocket.onmessage = async (event) => {
         const message = JSON.parse(event.data);
         switch (message.type) {
-            case messageType.SESSION:
+            case serverMessageType.SESSION:
                 handleSessionMessage(message.payload);
                 break;
-            case messageType.PLAYER_ID:
+            case serverMessageType.PLAYER_ID:
                 playerId = message.payload;
+                break;
+            case serverMessageType.LEADERBOARD:
+                handleLeaderboardMessage(message.payload);
                 break;
             default:
                 return;
         }
+    };
+    webSocket.onopen = async () => {
+        sendSocketMessage(usernameInput.value, clientMessageType.USERNAME);
     };
 }

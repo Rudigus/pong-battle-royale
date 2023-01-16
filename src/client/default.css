@@ -42,6 +42,7 @@ body {
 }
 
 #match-leaderboard {
+    display: none;
     position: fixed;
     background-color: var(--rhythm);
     top: 0;

@@ -1,7 +1,8 @@
 import { WebSocket } from "ws";
 
 export default interface Player {
-    id: string;
+    id: number;
+    // id: string;
     socket: WebSocket;
     action?: string;
 

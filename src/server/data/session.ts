@@ -5,7 +5,8 @@ export interface BallData {
 }
 
 export interface PlayerData {
-    id: string;
+    id: number;
+    // id: string;
     size: number;
     angle: number;
     minAngle: number;
