@@ -239,12 +239,22 @@ function updateBall() {
 
     // Ball out of bounds
     if(ball.position.length() > playersDistanceFromCenter + 1) {
-
-        const angle = Math.abs(Math.atan2(ball.position.x, ball.position.y));
-        const loser = players.find(player => { return (player.minAngle <= angle && angle <= player.maxAngle) });
+        let angle = Math.atan2(ball.position.y, ball.position.x) - Math.PI / 2;
+        if (angle < 0) {
+            angle += 2 * Math.PI;
+        }
+        angle = (Math.PI * 2) - angle;
+        const loser = players.find(player => { return (player.minAngle <= angle && angle <= player.maxAngle + player.size) });
 
         if(loser) {
             //loser.socket.terminate();
+
+            const winningLeaders = leaderboard.leaders.filter(leader => leader.playerID != loser.id);
+            if (winningLeaders) {
+                winningLeaders.forEach(leader => leader.score += 1);
+                const message = generateSocketMessage(leaderboard, ServerMessageType.Leaderboard);
+                players.forEach((player) => { player.socket.send(message); });
+            }
 
             //console.log(`Player ${loser.id} LOST!`)
         }
