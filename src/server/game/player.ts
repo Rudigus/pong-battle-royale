@@ -13,4 +13,7 @@ export default interface Player {
     maxAngle: number;
 
     lastAngle: number;
+
+    // Angle to be updated by physics loop, to prevent tunneling
+    physicsAngle: number;
 }
