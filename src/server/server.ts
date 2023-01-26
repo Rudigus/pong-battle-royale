@@ -271,12 +271,14 @@ function loop() {
 
     const game_data: SessionData = {
         ball: {
-            position: ball.position
+            speed: ball.speed,
+            position: ball.position,
         },
         players: players.map<PlayerData>((item) => {
             return {
                 id: item.id,
                 size: item.size,
+                speed: item.speed,
                 angle: item.angle,
                 minAngle: item.minAngle,
                 maxAngle: item.maxAngle,
