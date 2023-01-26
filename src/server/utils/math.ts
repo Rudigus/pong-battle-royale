@@ -25,3 +25,9 @@ export function normal(line: Line): Vector {
     // OR
     return new Vector(delta.y, -delta.x);
 }
+
+export function moveTowards(current: number, target: number, maxDelta: number) {
+    if (Math.abs(target - current) <= maxDelta) { return target; }
+
+    return current + Math.sign(target - current) * maxDelta;
+}
