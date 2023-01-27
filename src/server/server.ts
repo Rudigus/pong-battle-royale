@@ -5,11 +5,12 @@ import Player from "./game/player";
 import Ball from "./game/ball";
 import { Line } from "./utils/line";
 import GameLoop from "./utils/gameLoop";
-import { clamp, reflectVector } from "./utils/Math";
+import { clamp, moveTowards, normal, reflectVector } from "./utils/Math";
 import { ServerMessageType, ServerSocketMessage, ClientMessageType, ClientSocketMessage } from "./data/socket";
 import { PlayerData, SessionData } from "./data/session";
 import { LeaderboardData } from "./data/leaderboard";
 // import { randomUUID } from "crypto";
+const circleToLineCollision = require('line-circle-collision');
 
 const server = new Server({ port: 2222 });
 
@@ -30,7 +31,10 @@ function generateSocketMessage(payload: any, type: ServerMessageType) {
 }
 
 GameLoop.init();
-GameLoop.setLoopAction(loop.bind(this));
+GameLoop.setLoopAction(
+    logicUpdate.bind(this), 
+    physicsUpdate.bind(this)
+);
 
 server.on('connection', function(socket) {
     console.log("new connection");
@@ -124,7 +128,8 @@ function addPlayer(socket: WebSocket) {
         angle: 0, // Initialized in reloadPlayersPositions
         minAngle: 0, // Initialized in reloadPlayersPositions
         maxAngle: 0, // Initialized in reloadPlayersPositions
-        lastAngle: 0 // Initialized in reloadPlayersPositions
+        lastAngle: 0, // Initialized in reloadPlayersPositions
+        physicsAngle: 0 // Initialized in reloadPlayersPositions
     }
     
     const message = generateSocketMessage(id, ServerMessageType.PlayerID);
@@ -153,7 +158,8 @@ function reloadPlayersPositions() {
         item.maxAngle = ((item.minAngle + SECTION_SIZE) - PLAYER_SIZE);
 
         item.angle = ((item.minAngle + ((item.maxAngle - item.minAngle) / 2)));
-        item.lastAngle = item.angle
+        item.lastAngle = item.angle;
+        item.physicsAngle = item.angle;
     });
 
     console.log("PLAYERS " + players.length);
@@ -167,16 +173,16 @@ function updatePlayersInput() {
 
         switch(player.action) {
             case "move_left":
-                player.angle = clamp(
-                    player.angle + (player.speed * GameLoop.getDeltaTime()), 
+                player.physicsAngle = clamp(
+                    player.angle + (player.speed * GameLoop.getLogicDeltaTime()), 
                     player.minAngle, 
                     player.maxAngle
                 );
             break;
 
             case "move_right":
-                player.angle = clamp(
-                    player.angle - (player.speed * GameLoop.getDeltaTime()), 
+                player.physicsAngle = clamp(
+                    player.angle - (player.speed * GameLoop.getLogicDeltaTime()), 
                     player.minAngle, 
                     player.maxAngle
                 );
@@ -196,13 +202,14 @@ function checkBallCollisionWithPlayer(player: Player, ballLinecast: Line): boole
     }
 
     function checkBallCollision(playerCollider: Line): boolean {
+        // Check for trajectory collision
         const collisionPoint = ballLinecast.intersects(playerCollider);
     
         if(collisionPoint) {
             const centerDir = new Vector(0, 0).subtract(collisionPoint.point).normalize();
 
             // Move to near exact position. (if exact, collision would happen forever)
-            ball.position = collisionPoint.point.add(centerDir.multiply(0.01)); 
+            ball.position = collisionPoint.point.add(centerDir.multiply(ball.radius)); 
     
             // Reflect ball direction
             ball.direction = reflectVector(ball.direction, collisionPoint.normal);
@@ -213,12 +220,25 @@ function checkBallCollisionWithPlayer(player: Player, ballLinecast: Line): boole
         return false;
     }
 
-    // There is no collision sweep, thus check collision on the last and current states
-    if(checkBallCollision(playerColliderLineForAngle(player.angle, player.size))) { 
+    const playerCollider = playerColliderLineForAngle(player.angle, player.size);
+
+    if(checkBallCollision(playerCollider)) {
         return true;
-    } else {
-        return checkBallCollision(playerColliderLineForAngle(player.lastAngle, player.size));
     }
+
+    // Check if circle collides with line
+    const circle = [ball.position.x, ball.position.y],
+        radius = ball.radius,
+        a = [playerCollider.pointA.x, playerCollider.pointA.y],
+        b = [playerCollider.pointB.x, playerCollider.pointB.y]
+    
+    if(circleToLineCollision(a, b, circle, radius)) {
+        // Reflect ball direction
+        ball.direction = normal(playerCollider); // Simplified redirection
+        return true;
+    }
+
+    return false;
 }
 
 function updateBall() {
@@ -226,7 +246,7 @@ function updateBall() {
     const tempBallPos = ball.position
 
     // pos = (pos + (dir * speed))
-    ball.position = ball.position.add((ball.direction.multiply(ball.speed * GameLoop.getDeltaTime())));
+    ball.position = ball.position.add((ball.direction.multiply(ball.speed * GameLoop.getPhysicsDeltaTime())));
 
     // Ball movement line points
     const ballLinecast = new Line(tempBallPos, ball.position);
@@ -264,19 +284,26 @@ function updateBall() {
     }
 }
 
-function loop() {
-    updatePlayersInput();
+function updatePlayersPhysics() {
+    players.forEach((player) => {
+        player.lastAngle = player.angle;
+        player.angle = moveTowards(player.angle, player.physicsAngle, (player.speed * GameLoop.getPhysicsDeltaTime()));
+    });
+}
 
-    updateBall();
+function logicUpdate() {
+    updatePlayersInput();
 
     const game_data: SessionData = {
         ball: {
-            position: ball.position
+            speed: ball.speed,
+            position: ball.position,
         },
         players: players.map<PlayerData>((item) => {
             return {
                 id: item.id,
                 size: item.size,
+                speed: item.speed,
                 angle: item.angle,
                 minAngle: item.minAngle,
                 maxAngle: item.maxAngle,
@@ -288,4 +315,9 @@ function loop() {
     const response = generateSocketMessage(game_data, ServerMessageType.Session);
 
     players.forEach((item) => { item.socket.send(response); });
+}
+
+function physicsUpdate() {
+    updateBall();
+    updatePlayersPhysics();
 }
