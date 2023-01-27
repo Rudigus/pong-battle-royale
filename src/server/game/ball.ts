@@ -1,6 +1,7 @@
 import { Vector } from "vecti";
 
 export default class Ball {
+    radius: number = 0.15;
     speed: number;
     position: Vector;
     direction: Vector;
