@@ -138,6 +138,22 @@ function setupSocket() {
             context.moveTo(a.x, a.y);
             context.lineTo(b.x, b.y);
             context.stroke();
+
+            // Render player name text
+            context.save();
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.translate((canvas.width / 2), (canvas.height / 2));
+            
+            const nameAngle = (worldAngleOffsetToCenterPlayer + player.angle + (player.size / 2));
+            const namePos = getPointInWorld(
+                (Math.sin(nameAngle) * distanceFromCenter), 
+                (Math.cos(nameAngle) * distanceFromCenter)
+            );
+            
+            context.font = "12px Arial";
+            context.textAlign = "center";
+            context.fillText(`Player #${player.id}`, namePos.x, namePos.y);
+            context.restore();
         });
     }
     function addLeaderEntry(leader) {
