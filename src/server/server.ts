@@ -56,9 +56,13 @@ server.on('connection', function(socket) {
                 player.action = message.payload;
                 break;
             case ClientMessageType.Username:
+                let username = message.payload;
+                if (username.length === 0) {
+                    username = `Player #${player.id}`;
+                }
                 leaderboard.leaders.push({
                     playerID: player.id,
-                    name: message.payload,
+                    name: username,
                     score: 0
                 });
                 const replyMessage = generateSocketMessage(leaderboard, ServerMessageType.Leaderboard);

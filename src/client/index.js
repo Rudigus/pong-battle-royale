@@ -53,6 +53,7 @@ let webSocket = null;
 let lastDataFromServer = null;
 let currentDataFromServer = null;
 let interpolatedDataFromServer = null;
+let leaderboard = null;
 
 let gameLoop = null;
 
@@ -179,6 +180,10 @@ function render() {
         context.stroke();
         
         // Render player name text
+        const name = leaderboard.leaders.find(leader => leader.playerID === player.id).name;
+        if (name === undefined) {
+            return;
+        }
         context.save();
         context.setTransform(1, 0, 0, 1, 0, 0);
         context.translate((canvas.width / 2), (canvas.height / 2));
@@ -191,7 +196,7 @@ function render() {
 
         context.font = "12px Arial";
         context.textAlign = "center";
-        context.fillText(`Player #${player.id}`, namePos.x, namePos.y);
+        context.fillText(name, namePos.x, namePos.y);
         context.restore();
     });
 }
@@ -288,6 +293,8 @@ function setupSocket() {
         }
         leadersContainer.replaceChildren();
         data.leaders.forEach(leader => addLeaderEntry(leader));
+
+        leaderboard = data;
     }
     webSocket.onmessage = async (event) => {
         const message = JSON.parse(event.data);
