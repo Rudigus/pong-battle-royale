@@ -146,8 +146,6 @@ function render() {
 
     let worldAngleOffsetToCenterPlayer = 0;
     
-    context.clearRect(-canvas.width, -canvas.height, canvas.width * 1.5, canvas.height * 1.5);
-
     context.strokeStyle = "black";
     context.lineWidth = 1;
 
@@ -156,6 +154,8 @@ function render() {
     worldAngleOffsetToCenterPlayer += 180 * (Math.PI / 180) // Offset to screen bottom
 
     context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
     context.translate((canvas.width / 2), (canvas.height / 2));
     context.rotate(worldAngleOffsetToCenterPlayer);
 
