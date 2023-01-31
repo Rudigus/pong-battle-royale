@@ -258,7 +258,7 @@ function updateBall() {
     // Check collisions
     players.forEach((player) => {
         if(checkBallCollisionWithPlayer(player, ballLinecast)) {
-            ball.speed += 1;
+            ball.speed += 0.5;
         }
     });
 
