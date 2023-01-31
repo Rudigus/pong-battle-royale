@@ -258,6 +258,7 @@ function updateBall() {
     // Check collisions
     players.forEach((player) => {
         if(checkBallCollisionWithPlayer(player, ballLinecast)) {
+            ball.speed += 1;
         }
     });
 
@@ -283,6 +284,7 @@ function updateBall() {
             //console.log(`Player ${loser.id} LOST!`)
         }
 
+        ball.speed = 3; // Reset to initial speed
         ball.position = new Vector(0, 0); // Reset to initial position
         ball.direction = new Vector(Math.random() - Math.random(), Math.random() - Math.random()).normalize(); // Reset to initial direction
     }
